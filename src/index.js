@@ -1,0 +1,38 @@
+import cors from 'cors';
+import dotenv from "dotenv";
+import express from "express";
+import { addStoreToRegion } from "./controllers/storeController.js";
+import { addReviewToStore } from "./controllers/reviewController.js";
+import { challengeMission } from "./controllers/missionController.js"; // addMissionToStore 제거
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// 미들웨어 설정
+app.use(cors());
+app.use(express.static('public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// 기본 라우트
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
+
+// 특정 지역에 가게 추가하기 API
+app.post("/api/regions/:regionId/stores", addStoreToRegion);
+
+// 가게에 리뷰 추가하기 API
+app.post("/api/reviews", addReviewToStore);
+
+// 3번 가게에 미션 추가하기 API는 나중에...
+
+// 가게의 미션을 도전 중인 미션에 추가(미션 도전하기) API
+app.post("/api/missions/:missionId/verify", challengeMission);
+
+// 서버 시작
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
