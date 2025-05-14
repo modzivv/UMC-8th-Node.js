@@ -32,6 +32,22 @@ app.post("/api/reviews", addReviewToStore);
 // 가게의 미션을 도전 중인 미션에 추가(미션 도전하기) API
 app.post("/api/missions/:missionId/verify", challengeMission);
 
+// 404 핸들러 추가
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      code: 'NOT_FOUND',
+      message: '요청한 리소스를 찾을 수 없습니다',
+      statusCode: 404,
+      timestamp: new Date().toISOString()
+    }
+  });
+});
+
+// 에러 핸들러 추가
+app.use(errorHandler);
+
 // 서버 시작
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
