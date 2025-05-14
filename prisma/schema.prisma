@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  username      String
+  userMissions  UserMission[]
+  reviews       Review[]
+
+  @@map("users")
+}
+
+model Region {
+  id      Int      @id @default(autoincrement())
+  name    String
+  stores  Store[]
+
+  @@map("regions")
+}
+
+model Store {
+  id          Int       @id @default(autoincrement())
+  name        String
+  address     String
+  description String?
+  owner_code  String?
+  region_id   Int
+  region      Region    @relation(fields: [region_id], references: [id])
+  missions    Mission[]
+  reviews     Review[]
+
+  @@map("stores")
+}
+
+model Mission {
+  id              Int           @id @default(autoincrement())
+  title           String
+  store_id        Int
+  store           Store         @relation(fields: [store_id], references: [id])
+  userMissions    UserMission[]
+
+  @@map("missions")
+}
+
+model UserMission {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  mission_id  Int
+  status      String
+  started_at  DateTime  @default(now())
+  completed_at DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  user        User      @relation(fields: [user_id], references: [id])
+  mission     Mission   @relation(fields: [mission_id], references: [id])
+
+  @@map("user_missions")
+}
+
+model Review {
+  id          Int           @id @default(autoincrement())
+  content     String
+  rating      Float
+  user_id     Int
+  store_id    Int
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+  user        User          @relation(fields: [user_id], references: [id])
+  store       Store         @relation(fields: [store_id], references: [id])
+  images      ReviewImage[]
+
+  @@map("reviews")
+}
+
+model ReviewImage {
+  id          Int       @id @default(autoincrement())
+  review_id   Int
+  image_url   String
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  review      Review    @relation(fields: [review_id], references: [id])
+
+  @@map("review_images")
+}
