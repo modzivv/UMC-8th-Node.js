@@ -1,9 +1,12 @@
 import cors from 'cors';
 import dotenv from "dotenv";
 import express from "express";
+import swaggerAutogen from "swagger-autogen";
+import swaggerUiExpress from "swagger-ui-express";
+
 import { addStoreToRegion } from "./controllers/storeController.js";
 import { addReviewToStore } from "./controllers/reviewController.js";
-import { challengeMission } from "./controllers/missionController.js"; // addMissionToStore 제거
+import { challengeMission } from "./controllers/missionController.js";
 
 dotenv.config();
 
@@ -15,6 +18,38 @@ app.use(cors());
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Swagger UI 설정
+app.use(
+  "/docs",
+  swaggerUiExpress.serve,
+  swaggerUiExpress.setup({}, {
+    swaggerOptions: {
+      url: "/openapi.json",
+    },
+  })
+);
+
+// Swagger JSON 파일 생성을 위한 라우트
+app.get("/openapi.json", async (req, res, next) => {
+  // #swagger.ignore = true
+  const options = {
+    openapi: "3.0.0",
+    disableLogs: true,
+    writeOutputFile: false,
+  };
+  const outputFile = "/dev/null"; // 파일 출력은 사용하지 않습니다.
+  const routes = ["./src/index.js"];
+  const doc = {
+    info: {
+      title: "UMC 8th",
+      description: "UMC 8th Node.js 테스트 프로젝트입니다.",
+    },
+    host: "localhost:3000",
+  };
+  const result = await swaggerAutogen(options)(outputFile, routes, doc);
+  res.json(result ? result.data : null);
+});
 
 // 기본 라우트
 app.get("/", (req, res) => {
@@ -45,8 +80,6 @@ app.use((req, res) => {
   });
 });
 
-// 에러 핸들러 추가
-app.use(errorHandler);
 
 // 서버 시작
 app.listen(port, () => {
