@@ -3,12 +3,22 @@ import dotenv from "dotenv";
 import express from "express";
 import swaggerAutogen from "swagger-autogen";
 import swaggerUiExpress from "swagger-ui-express";
+import { PrismaSessionStore } from "@quixo3/prisma-session-store";
+import session from "express-session";
+import passport from "passport";
+import { googleStrategy } from "./auth.config.js";
+import { prisma } from "./db.config.js";
 
 import { addStoreToRegion } from "./controllers/storeController.js";
 import { addReviewToStore } from "./controllers/reviewController.js";
 import { challengeMission } from "./controllers/missionController.js";
 
 dotenv.config();
+
+// Passport 설정
+passport.use(googleStrategy);
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -18,6 +28,43 @@ app.use(cors());
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Session 설정
+app.use(
+  session({
+    cookie: {
+      maxAge: 7 * 24 * 60 * 60 * 1000, // ms
+    },
+    resave: false,
+    saveUninitialized: false,
+    secret: process.env.EXPRESS_SESSION_SECRET,
+    store: new PrismaSessionStore(prisma, {
+      checkPeriod: 2 * 60 * 1000, // ms
+      dbRecordIdIsSessionId: true,
+      dbRecordIdFunction: undefined,
+    }),
+  })
+);
+
+// Passport 초기화
+app.use(passport.initialize());
+app.use(passport.session());
+
+// OAuth 로그인 라우트
+app.get("/oauth2/login/google", passport.authenticate("google"));
+app.get(
+  "/oauth2/callback/google",
+  passport.authenticate("google", {
+    failureRedirect: "/oauth2/login/google",
+    failureMessage: true,
+  }),
+  (req, res) => res.redirect("/")
+);
+
+// API 라우트들
+app.post("/api/regions/:regionId/stores", addStoreToRegion);
+app.post("/api/reviews", addReviewToStore);
+app.post("/api/missions/:missionId/verify", challengeMission);
 
 // Swagger UI 설정
 app.use(
@@ -38,7 +85,7 @@ app.get("/openapi.json", async (req, res, next) => {
     disableLogs: true,
     writeOutputFile: false,
   };
-  const outputFile = "/dev/null"; // 파일 출력은 사용하지 않습니다.
+  const outputFile = "/dev/null";
   const routes = ["./src/index.js"];
   const doc = {
     info: {
@@ -51,8 +98,10 @@ app.get("/openapi.json", async (req, res, next) => {
   res.json(result ? result.data : null);
 });
 
-// 기본 라우트
+// 기본 라우트 (테스트용 - req.user 확인)
 app.get("/", (req, res) => {
+  // #swagger.ignore = true
+  console.log(req.user); // 로그인된 사용자 정보 확인
   res.send("Hello World!");
 });
 
@@ -79,7 +128,6 @@ app.use((req, res) => {
     }
   });
 });
-
 
 // 서버 시작
 app.listen(port, () => {
