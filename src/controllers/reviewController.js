@@ -64,8 +64,7 @@ export const addReviewToStore = async (req, res) => {
     };
   */
   try {
-    // 기본 사용자 ID는 테스트를 위해 1로 설정
-    const userId = req.user?.id || 1;
+    const userId = req.user?.id;
     
     const reviewDto = createReviewDto({
       ...req.body,

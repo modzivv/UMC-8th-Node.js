@@ -6,17 +6,20 @@ import swaggerUiExpress from "swagger-ui-express";
 import { PrismaSessionStore } from "@quixo3/prisma-session-store";
 import session from "express-session";
 import passport from "passport";
-import { googleStrategy } from "./auth.config.js";
+import { googleStrategy, githubStrategy } from "./auth.config.js";
 import { prisma } from "./db.config.js";
+import { requireAuth } from "./middleware/authMiddleware.js";
 
 import { addStoreToRegion } from "./controllers/storeController.js";
 import { addReviewToStore } from "./controllers/reviewController.js";
 import { challengeMission } from "./controllers/missionController.js";
+import { getUserProfile, updateUserProfile } from "./controllers/userController.js";
 
 dotenv.config();
 
 // Passport 설정
 passport.use(googleStrategy);
+passport.use(githubStrategy); // GitHub 전략 추가
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
 
@@ -61,10 +64,23 @@ app.get(
   (req, res) => res.redirect("/")
 );
 
-// API 라우트들
+// GitHub 로그인 라우트
+app.get("/oauth2/login/github", passport.authenticate("github"));
+app.get(
+  "/oauth2/callback/github",
+  passport.authenticate("github", {
+    failureRedirect: "/oauth2/login/github",
+    failureMessage: true,
+  }),
+  (req, res) => res.redirect("/")
+);
+
+// API 라우트들 (OAuth 라우트 다음에 배치)
 app.post("/api/regions/:regionId/stores", addStoreToRegion);
-app.post("/api/reviews", addReviewToStore);
-app.post("/api/missions/:missionId/verify", challengeMission);
+app.post("/api/reviews", requireAuth, addReviewToStore);
+app.post("/api/missions/:missionId/verify", requireAuth, challengeMission);
+app.get("/api/users/profile", requireAuth, getUserProfile);
+app.put("/api/users/profile", requireAuth, updateUserProfile);
 
 // Swagger UI 설정
 app.use(
